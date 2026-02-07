@@ -124,6 +124,41 @@ export default function StaffLogin() {
     }
   };
 
+  const handleSendResetLink = async () => {
+    if (!email) {
+      toast.error("Please enter your email address to receive a reset link.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Try to send a password reset magic link. If the method isn't available,
+      // fall back to sending a sign-in magic link.
+      const redirectTo = `${window.location.origin}/staff/login`;
+      let result: any;
+
+      try {
+        // Preferred: password reset link
+        result = await (supabase.auth as any).resetPasswordForEmail(email, { redirectTo });
+      } catch (e) {
+        // Fallback: send sign-in magic link
+        result = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
+      }
+
+      if (result?.error) {
+        console.error("Reset link error:", result.error);
+        toast.error(result.error.message || "Failed to send reset link");
+      } else {
+        toast.success("Check your inbox — a reset/magic link was sent if the email exists.");
+      }
+    } catch (err: any) {
+      console.error("Unexpected error sending reset link:", err);
+      toast.error(err?.message || "Could not send reset link");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col md:flex-row font-sans">
       {/* Brand Section Side (Desktop) */}
@@ -198,6 +233,15 @@ export default function StaffLogin() {
                 required
                 className="h-11 bg-neutral-50"
               />
+              <div className="text-right mt-2">
+                <button
+                  type="button"
+                  onClick={handleSendResetLink}
+                  className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                >
+                  Forgot password?
+                </button>
+              </div>
             </div>
 
             <Button type="submit" className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium" disabled={loading}>

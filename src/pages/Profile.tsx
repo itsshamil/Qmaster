@@ -14,6 +14,7 @@ export default function Profile() {
     const { user, signOut, loading: authLoading } = useAuth();
     const [fullName, setFullName] = useState("");
     const [saving, setSaving] = useState(false);
+    const [sendingReset, setSendingReset] = useState(false);
     const [loadingConfig, setLoadingConfig] = useState(true);
 
     useEffect(() => {
@@ -67,6 +68,36 @@ export default function Profile() {
 
     const handleSignOut = async () => {
         await signOut();
+    }
+
+    const handleSendResetLink = async () => {
+        if (!user?.email) {
+            toast.error("No email available for this account.");
+            return;
+        }
+
+        setSendingReset(true);
+        try {
+            const redirectTo = `${window.location.origin}/staff/login`;
+            let result: any;
+            try {
+                result = await (supabase.auth as any).resetPasswordForEmail(user.email, { redirectTo });
+            } catch (e) {
+                result = await supabase.auth.signInWithOtp({ email: user.email, options: { emailRedirectTo: redirectTo } });
+            }
+
+            if (result?.error) {
+                console.error('Reset link error:', result.error);
+                toast.error(result.error.message || 'Failed to send reset link');
+            } else {
+                toast.success('Check your inbox — a reset/magic link was sent if the email exists.');
+            }
+        } catch (err: any) {
+            console.error('Unexpected error sending reset link:', err);
+            toast.error(err?.message || 'Could not send reset link');
+        } finally {
+            setSendingReset(false);
+        }
     }
 
     if (authLoading || loadingConfig) {
@@ -123,6 +154,13 @@ export default function Profile() {
                         </Button>
                     </form>
                 </Card>
+
+                        <div className="mb-6">
+                            <Button variant="outline" className="w-full h-11 border-neutral-200 text-neutral-700 hover:bg-neutral-50" onClick={handleSendResetLink} disabled={sendingReset}>
+                                {sendingReset ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <></>}
+                                Send password reset link
+                            </Button>
+                        </div>
 
                 {/* Ticket History Section */}
                 <div className="mb-8">
